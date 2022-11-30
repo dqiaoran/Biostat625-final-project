@@ -1,0 +1,36 @@
+---
+title: "Untitled"
+output: html_document
+date: '2022-11-30'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(reticulate)
+install_miniconda()
+conda_list()
+conda_create(environment='/home/asmauger/biostat625final/scipenn_env.yml')
+conda_list()
+# restart R session
+library(reticulate)
+use_condaenv('scipenn_env')
+```
+
+ 
+After initial set up, just run 
+library(reticulate)
+use_condaenv('scipenn_env')
+at the start of each session 
+
+```{python}
+from sciPENN.Preprocessing import preprocess
+from sciPENN.sciPENN_API import sciPENN_API
+?sciPENN_API
+?preprocess
+```
+
+

@@ -47,7 +47,8 @@ seuratobj = NormalizeData(seuratobj, normalization.method = "LogNormalize", scal
 
 DefaultAssay(seuratobj) = 'prot'
 # not sure if this is best way to normalize protein
-seuratobj =  NormalizeData(seuratobj, normalization.method = 'CLR', margin = 2)
+# check non-human proteins
+seuratobj = NormalizeData(seuratobj, normalization.method = 'CLR', margin = 2)
 
 ## Variable features
 DefaultAssay(seuratobj) = 'RNA'
