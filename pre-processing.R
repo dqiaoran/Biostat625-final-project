@@ -133,12 +133,46 @@ seuratobj = FindMultiModalNeighbors(
   modality.weight.name = "RNA.weight2"
 )
 seuratobj <- RunUMAP(seuratobj, nn.name = "weighted.nn.dsb", reduction.name = "wnn.dsb.umap")
-p9 = DimPlot(seuratobj, reduction='wnn.dsb.umap', group.by='cell_type', shuffle=T)
-p10 = DimPlot(seuratobj, reduction='wnn.dsb.umap', group.by='day', shuffle=T)
+p9 = DimPlot(seuratobj, reduction='wnn.dsb.umap', group.by='cell_type', shuffle=T) +
+  labs(x='UMAP1', y='UMAP2', title='Cell type') +
+  theme(text=element_text(size=22))
+p10 = DimPlot(seuratobj, reduction='wnn.dsb.umap', group.by='day', shuffle=T) +
+  labs(x='UMAP1', y='UMAP2', title='Day') +
+  theme(text=element_text(size=22))
 p9 + p10
+
+p11 = DimPlot(seuratobj, reduction='wnn.dsb.umap', group.by='donor', shuffle=T) +
+  labs(x='UMAP1', y='UMAP2', title='Donor') +
+  theme(text=element_text(size=18))
+p11
 
 # Other summaries
 
 library(dplyr)
-metadata %>% filter(cell_id %in% colnames(seuratobj)) %>% select(day, donor, cell_type) %>% group_by(day, donor) %>% summarise(n())
-metadata %>% filter(cell_id %in% colnames(seuratobj)) %>% select(day, donor, cell_type) %>% group_by(cell_type) %>% summarise(n())
+summary1 = metadata %>% filter(cell_id %in% colnames(seuratobj)) %>% select(day, donor, cell_type) %>% group_by(day, donor) %>% summarise(n())
+summary2 = metadata %>% filter(cell_id %in% colnames(seuratobj)) %>% select(day, donor, cell_type) %>% group_by(cell_type) %>% summarise(n())
+sum(summary1$`n()`)
+
+library(ggplot2)
+library(forcats)
+summary3 = metadata %>%
+  filter(cell_id %in% colnames(seuratobj)) %>%
+  select(day, donor, cell_type) %>%
+  left_join(summary1) %>%
+  group_by(day, donor, `n()`, cell_type) %>%
+  count() %>%
+  mutate(proportion = n/`n()`)
+summary3$cell_type = as.factor(summary3$cell_type)
+
+ggplot(summary3, aes(y=proportion, x=factor(day), fill=fct_reorder(summary3$cell_type, summary3$proportion, mean, .desc=T))) +
+  geom_bar(stat='summary', fun='mean', position='dodge') +
+  labs(fill='cell type', x='day', y='average proportion of cells assigned to cell type') +
+  theme_classic() +
+  theme(text=element_text(size=14)) +
+  scale_fill_brewer(palette='Set2', labels= c('HSC'='Hematopoietic Stem Cell',
+                      'EryP' = 'Erythrocyte Progenitor',
+                      'NeuP'='Neutrophil Progenitor',
+                      'MasP' ='Mast Cell Progenitor',
+                      'MkP' = 'Megakaryocyte Progenitor',
+                      'MoP' = 'Monocyte Progenitor',
+                      'BP' = 'B-Cell Progenitor'))
