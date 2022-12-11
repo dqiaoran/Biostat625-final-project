@@ -1,6 +1,6 @@
 library(rhdf5)
 
-## Load rnaseq data ##
+## Load RNAseq data ##
 h5ls("/home/asmauger/biostat625final/train_cite_inputs_raw.h5")
 pathinput = "/home/asmauger/biostat625final/train_cite_inputs_raw.h5"
 rna_data = h5read(pathinput, "/train_cite_inputs_raw/block0_values", index=list(1:22085, 1:70988))
@@ -50,6 +50,51 @@ sparse_prot_norm = readRDS('/home/asmauger/biostat625final/sparse_prot.rds')
 all.equal(dim(sparse_RNA), c(22085, 70988))
 all.equal(dim(sparse_prot), c(140, 70988))
 all.equal(dim(sparse_prot_norm), c(140, 70988))
+
+#### SPLITTING DATA ####
+
+library(dplyr)
+set.seed(347382)
+
+## Load row names ##
+pathinput = "/home/asmauger/biostat625final/train_cite_inputs_raw.h5"
+rna_cols = h5read(pathinput, 'train_cite_inputs_raw/axis1')
+
+## Load metadata
+metadata = read.csv('/home/asmauger/biostat625final/metadata.csv', header=T)
+# filter metadata to cell ids we have data for and add a 'row number' column
+grouped_metadata = metadata %>% filter(cell_id %in% rna_cols) %>% mutate(id=1:70988) %>% group_by(donor, day)
+
+# make sure the metadata retained the order of the data (rna_cols)
+test = grouped_metadata %>% ungroup() %>% select(cell_id)
+all.equal(as.matrix(test$cell_id), as.matrix(rna_cols))
+
+# 70988 samples, 9 groups (3 donors, 3 days)
+ngroup = round(70988/9)
+nsplit = round(70988/18)
+mysample = grouped_metadata %>% slice_sample(n=nsplit)
+count(mysample) # check that the sampling worked evenly
+indexes = sample %>% ungroup() %>% select(id)
+length(indexes$id)
+
+### RNA training split
+
+pathinput = "/home/asmauger/biostat625final/train_cite_inputs_raw.h5"
+rna_data_train = h5read(pathinput, "/train_cite_inputs_raw/block0_values", index=list(1:22085, indexes$id))
+rna_rows_train = h5read(pathinput, '/train_cite_inputs_raw/axis0')
+rna_cols_train = h5read(pathinput, '/train_cite_inputs_raw/axis1', index=list(indexes$id))
+
+h5ls(pathinput)
+
+
+h5createFile("rna_train.h5")
+h5createGroup("rna_train.h5","")
+h5createDataset('rna_train.h5', 'rawcounts', c(22085, 35496))
+h5writeDataset(obj = rna_data_train, h5loc = "rna_train.h5", name = 'rawcounts')
+h5createDataset('rna_train.h5', 'genes', 22085, chunk = 1000)
+h5writeDataset(as.matrix(rna_rows_train), 'rna_train.h5', 'genes')
+h5createDataset('rna_train.h5', 'cells', length(indexes$id), chunk = 1000)
+h5writeDataset(as.matrix(rna_cols_train, 'rna_train.h5', 'cells')
 
 ## Seurat object
 
