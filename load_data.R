@@ -74,27 +74,52 @@ ngroup = round(70988/9)
 nsplit = round(70988/18)
 mysample = grouped_metadata %>% slice_sample(n=nsplit)
 count(mysample) # check that the sampling worked evenly
-indexes = sample %>% ungroup() %>% select(id)
+indexes = mysample %>% ungroup() %>% select(id)
 length(indexes$id)
+test_indexes = c(1:70988)[-indexes$id]
+sum(test_indexes %in% indexes$id) # check that the test indices are opposite of training indices
 
-### RNA training split
+### RNA training split (raw)
 
 pathinput = "/home/asmauger/biostat625final/train_cite_inputs_raw.h5"
 rna_data_train = h5read(pathinput, "/train_cite_inputs_raw/block0_values", index=list(1:22085, indexes$id))
 rna_rows_train = h5read(pathinput, '/train_cite_inputs_raw/axis0')
 rna_cols_train = h5read(pathinput, '/train_cite_inputs_raw/axis1', index=list(indexes$id))
+smalldata_train = as(rna_data_train, Class='dgCMatrix')
+dimnames(smalldata_train) = list(rna_rows_train, rna_cols_train)
+saveRDS(smalldata_train, file='sparse_RNA_train.rds')
 
-h5ls(pathinput)
+### RNA testing split (raw)
+
+pathinput = "/home/asmauger/biostat625final/train_cite_inputs_raw.h5"
+rna_data_test = h5read(pathinput, "/train_cite_inputs_raw/block0_values", index=list(1:22085, test_indexes))
+rna_rows_test = h5read(pathinput, '/train_cite_inputs_raw/axis0')
+rna_cols_test = h5read(pathinput, '/train_cite_inputs_raw/axis1', index=list(test_indexes))
+smalldata_test = as(rna_data_test, Class='dgCMatrix')
+dimnames(smalldata_test) = list(rna_rows_test, rna_cols_test)
+saveRDS(smalldata_test, file='sparse_RNA_test.rds')
+
+### Protein training split (raw)
+
+pathinput='/home/asmauger/biostat625final/train_cite_targets_raw.h5'
+prot_data_train = h5read(pathinput, '/train_cite_targets_raw/block0_values', index=list(1:140, indexes$id))
+prot_rows_train = h5read(pathinput, '/train_cite_targets_raw/axis0')
+prot_cols_train = h5read(pathinput, '/train_cite_targets_raw/axis1', index=list(indexes$id))
+smalldata_prot_train = as(prot_data_train, Class='dgCMatrix')
+dimnames(smalldata_prot_train) = list(prot_rows_train, prot_cols_train)
+saveRDS(smalldata_prot_train, file='sparse_prot_train.rds')
+
+### Protein testing split (raw)
+
+pathinput='/home/asmauger/biostat625final/train_cite_targets_raw.h5'
+prot_data_test = h5read(pathinput, '/train_cite_targets_raw/block0_values', index=list(1:140, test_indexes))
+prot_rows_test = h5read(pathinput, '/train_cite_targets_raw/axis0')
+prot_cols_test = h5read(pathinput, '/train_cite_targets_raw/axis1', index=list(test_indexes))
+smalldata_prot_test = as(prot_data_test, Class='dgCMatrix')
+dimnames(smalldata_prot_test) = list(prot_rows_test, prot_cols_test)
+saveRDS(smalldata_prot_test, file='sparse_prot_test.rds')
 
 
-h5createFile("rna_train.h5")
-h5createGroup("rna_train.h5","")
-h5createDataset('rna_train.h5', 'rawcounts', c(22085, 35496))
-h5writeDataset(obj = rna_data_train, h5loc = "rna_train.h5", name = 'rawcounts')
-h5createDataset('rna_train.h5', 'genes', 22085, chunk = 1000)
-h5writeDataset(as.matrix(rna_rows_train), 'rna_train.h5', 'genes')
-h5createDataset('rna_train.h5', 'cells', length(indexes$id), chunk = 1000)
-h5writeDataset(as.matrix(rna_cols_train, 'rna_train.h5', 'cells')
 
 ## Seurat object
 

@@ -1,0 +1,59 @@
+---
+title: "Seurat_to_AnnData"
+output: html_document
+date: '2022-12-12'
+---
+
+Notes:
+--Select HVG before making anndata object
+--create new variable that is a combo of batch & day
+--remove control protein data
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(Seurat)
+# BiocManager::install("zellkonverter")
+library(zellkonverter)
+```
+
+```{r}
+# read in raw protein data
+sparse_prot = readRDS('/home/asmauger/biostat625final/sparse_prot.rds')
+all.equal(dim(sparse_prot), c(140, 70988))
+
+# read in metadata
+metadata = read.csv('/home/asmauger/biostat625final/metadata.csv', header=T)
+rownames(metadata) = metadata[,1]
+metadata$daydonor = paste0('day',metadata$day, metadata$donor)
+
+# read in raw RNA training data
+sparse_RNA_train = readRDS('/home/asmauger/biostat625final/sparse_RNA_train.rds')
+# temporary - choose 1000 genes
+sparse_RNA_train = sparse_RNA_train[10000:11000,]
+
+# read in raw RNA testing data
+sparse_RNA_test = readRDS('/home/asmauger/biostat625final/sparse_RNA_test.rds')
+# temporary - choose 1000 genes
+sparse_RNA_test = sparse_RNA_test[10000:11000,]
+
+# read in raw protein training data
+sparse_prot_train = readRDS('/home/asmauger/biostat625final/sparse_prot_train.rds')
+
+# create Seurat object 
+seuratobj = CreateSeuratObject(counts = sparse_prot, meta.data=metadata, assay="prot")
+seuratobj2 = CreateSeuratObject(counts= sparse_RNA_train, meta.data=metadata)
+seuratobj3 = CreateSeuratObject(counts=sparse_prot_train, meta.data=metadata)
+seuratobj4 = CreateSeuratObject(counts= sparse_RNA_test, meta.data=metadata)  
+  
+# save as single cell experiment
+sce <- as.SingleCellExperiment(seuratobj)
+sce2 <- as.SingleCellExperiment(seuratobj2)
+sce3 <- as.SingleCellExperiment(seuratobj3)
+sce4 <- as.SingleCellExperiment(seuratobj4)
+
+# convert to anndata
+zellkonverter::writeH5AD(sce, file='/home/asmauger/biostat625final/test.h5ad')
+zellkonverter::writeH5AD(sce2, file='/home/asmauger/biostat625final/rna_train_trial.h5ad')
+zellkonverter::writeH5AD(sce3, file='/home/asmauger/biostat625final/prot_train_trial.h5ad')
+zellkonverter::writeH5AD(sce4, file='/home/asmauger/biostat625final/rna_test_trial.h5ad')
+```
