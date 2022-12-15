@@ -5,9 +5,19 @@ date: '2022-12-12'
 ---
 
 Notes:
---Select HVG before making anndata object
---create new variable that is a combo of batch & day
+
+--Select HVG before making anndata object 
+Based on source code, sciPENN filters out cells with low expression & genes with low expression; does median - normalization of genes + protein; does log1p normalization; and then select 1000 HVGs
+We could just use gene_list argument in sciPENN_API to set the 1000 HVGs, or we could do all the normalization steps in advance. 
+I'm going to do all the normalization steps in Seurat, just to be consistent with the choice of HVGs
+(I checked to make sure the Seurat normalization matches the sc.pp normalization results using the same toy data)
+
+--create new variable that is a combo of donor & day
+Day is essentially acting as a batch (I think), so I made 9 "batches" - one for each combination of day/donor
+
 --remove control protein data
+32,33,34,35, 85, 86 are mouse/rat antibodies
+`rownames(prot)[c(32:35, 85:86)]`
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -16,7 +26,7 @@ library(Seurat)
 library(zellkonverter)
 ```
 
-```{r}
+```{r OLD VERSION}
 # read in raw protein data
 sparse_prot = readRDS('/home/asmauger/biostat625final/sparse_prot.rds')
 all.equal(dim(sparse_prot), c(140, 70988))
@@ -56,4 +66,68 @@ zellkonverter::writeH5AD(sce, file='/home/asmauger/biostat625final/test.h5ad')
 zellkonverter::writeH5AD(sce2, file='/home/asmauger/biostat625final/rna_train_trial.h5ad')
 zellkonverter::writeH5AD(sce3, file='/home/asmauger/biostat625final/prot_train_trial.h5ad')
 zellkonverter::writeH5AD(sce4, file='/home/asmauger/biostat625final/rna_test_trial.h5ad')
+```
+
+```{r NEW VERSION}
+# read in metadata
+metadata = read.csv('/home/asmauger/biostat625final/metadata.csv', header=T)
+rownames(metadata) = metadata[,1]
+metadata$daydonor = paste0('day',metadata$day, metadata$donor)
+
+# read in raw RNA training data
+sparse_RNA_train = readRDS('/home/asmauger/biostat625final/sparse_RNA_train.rds')
+
+# read in raw RNA testing data
+sparse_RNA_test = readRDS('/home/asmauger/biostat625final/sparse_RNA_test.rds')
+
+# read in raw protein training data
+sparse_prot_train = readRDS('/home/asmauger/biostat625final/sparse_prot_train.rds')
+rownames(sparse_prot_train)[c(32:35, 85:86)] # remove mouse/rat proteins
+sparse_prot_train <- sparse_prot_train[-c(32:35, 85:86),]
+dim(sparse_prot_train)
+
+# read in raw protein testing data
+sparse_prot_test = readRDS('/home/asmauger/biostat625final/sparse_prot_test.rds')
+sparse_prot_test <- sparse_prot_test[-c(32:35, 85:86),] # remove mouse/rat proteins
+dim(sparse_prot_test)
+
+## Make seurat object and select HVGs
+# I am using log1p normalization based on the sciPENN_API code
+# there could be better methods to normalize protein
+
+data_list = list(sparse_RNA_train, sparse_RNA_test, sparse_prot_train, sparse_prot_test)
+seurat_list = list(0,0,0,0)
+for(i in 1:4) {
+  seuratobj = CreateSeuratObject(counts = data_list[[i]], meta.data=metadata)
+  scale = median(seuratobj$nCount_RNA) # scanpy normalizes to the median
+  seuratobj = NormalizeData(seuratobj, normalization.method = "LogNormalize", scale.factor = scale)
+  seurat_list[[i]] = seuratobj
+}
+
+# I believe sciPENN chooses HVG from a combined dataset, so here I merge the training/testing RNA
+all_RNA = merge(x = seurat_list[[1]], y = seurat_list[[2]]) 
+                
+all_RNA = FindVariableFeatures(all_RNA, nfeatures = 1000) # sciPENN uses 1000
+  # the scanpy version does some batch correction, but I don't see an option for this in Seurat
+
+mygenes = VariableFeatures(all_RNA)
+reduced_train_data = GetAssayData(seurat_list[[1]])[mygenes,]
+reduced_test_data = GetAssayData(seurat_list[[2]])[mygenes,]
+
+## Now convert to anndata (seurat -> SCE -> anndata)
+
+seuratobj = CreateSeuratObject(counts = reduced_train_data, meta.data=metadata)
+seuratobj2 = CreateSeuratObject(counts = reduced_test_data, meta.data=metadata)
+seuratobj3 = seurat_list[[3]]
+seuratobj4 = seurat_list[[4]]
+
+sce <- as.SingleCellExperiment(seuratobj)
+sce2 <- as.SingleCellExperiment(seuratobj2)
+sce3 <- as.SingleCellExperiment(seuratobj3)
+sce4 <- as.SingleCellExperiment(seuratobj4)
+
+zellkonverter::writeH5AD(sce, file='/home/asmauger/biostat625final/rna_train_hvg.h5ad')
+zellkonverter::writeH5AD(sce2, file='/home/asmauger/biostat625final/rna_test_hvg.h5ad')
+zellkonverter::writeH5AD(sce3, file='/home/asmauger/biostat625final/prot_train.h5ad', X_name='logcounts')
+zellkonverter::writeH5AD(sce4, file='/home/asmauger/biostat625final/prot_test.h5ad', X_name='logcounts')
 ```
