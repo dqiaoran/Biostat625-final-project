@@ -130,4 +130,5 @@ zellkonverter::writeH5AD(sce, file='/home/asmauger/biostat625final/rna_train_hvg
 zellkonverter::writeH5AD(sce2, file='/home/asmauger/biostat625final/rna_test_hvg.h5ad')
 zellkonverter::writeH5AD(sce3, file='/home/asmauger/biostat625final/prot_train.h5ad', X_name='logcounts')
 zellkonverter::writeH5AD(sce4, file='/home/asmauger/biostat625final/prot_test.h5ad', X_name='logcounts')
+
 ```
