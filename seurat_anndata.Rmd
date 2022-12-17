@@ -24,6 +24,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(Seurat)
 # BiocManager::install("zellkonverter")
 library(zellkonverter)
+library(SingleCellExperiment)
 ```
 
 ```{r OLD VERSION}
@@ -132,3 +133,23 @@ zellkonverter::writeH5AD(sce3, file='/home/asmauger/biostat625final/prot_train.h
 zellkonverter::writeH5AD(sce4, file='/home/asmauger/biostat625final/prot_test.h5ad', X_name='logcounts')
 
 ```
+```{r scale by batch}
+
+# make scaled (unit variance, 0 mean) versions of data
+
+seuratobj <- ScaleData(seuratobj, split.by='daydonor')
+seuratobj2 <- ScaleData(seuratobj2, split.by='daydonor')
+seuratobj3 <- ScaleData(seuratobj3, split.by='daydonor')
+seuratobj4 <- ScaleData(seuratobj4, split.by='daydonor')
+
+sce <- as.SingleCellExperiment(seuratobj)
+sce2 <- as.SingleCellExperiment(seuratobj2)
+sce3 <- as.SingleCellExperiment(seuratobj3)
+sce4 <- as.SingleCellExperiment(seuratobj4)
+
+zellkonverter::writeH5AD(sce, file='/home/asmauger/biostat625final/rna_train_hvg_scaled.h5ad', X_name='scaledata')
+zellkonverter::writeH5AD(sce2, file='/home/asmauger/biostat625final/rna_test_hvg_scaled.h5ad', X_name = 'scaledata')
+zellkonverter::writeH5AD(sce3, file='/home/asmauger/biostat625final/prot_train_scaled.h5ad', X_name='scaledata')
+zellkonverter::writeH5AD(sce4, file='/home/asmauger/biostat625final/prot_test_scaled.h5ad', X_name='scaledata')
+```
+
