@@ -1,0 +1,29 @@
+---
+title: "Predicting protein expression"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+date: '2022-12-17'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(patchwork)
+```
+
+## Introduction
+
+
+
+## Methods
+
+## Exploratory Analysis
+
+[](/home/asmauger/biostat625final/overall_umap.png) 
+
+
+
+
+
