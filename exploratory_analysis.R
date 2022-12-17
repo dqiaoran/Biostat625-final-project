@@ -22,6 +22,7 @@ rownames(sparse_RNA) = gene_sym
 library(Seurat)
 metadata = read.csv('/home/asmauger/biostat625final/metadata.csv', header=T)
 rownames(metadata) = metadata[,1]
+metadata$daydonor = paste0('day',metadata$day, metadata$donor)
 # add RNA and metadata
 seuratobj = CreateSeuratObject(counts = sparse_RNA, meta.data=metadata)
 # add raw protein
@@ -36,7 +37,7 @@ rm(sparse_RNA) # access with seuratobj@assays$RNA@counts
 rm(sparse_prot) # access with seuratobj@assays$prot@counts
 rm(sparse_prot_norm) # access with seuratobj@assays$protnorm@counts
 
-## QC ??? not sure what we want to do here
+## QC
 VlnPlot(seuratobj, features = c("nFeature_RNA", "nCount_RNA"), ncol = 2)
 # nFeature_RNA is number of unique genes expressed in a given cell
 # nCount_RNA is number of transcripts in a given cell
@@ -101,11 +102,11 @@ seuratobj = RunUMAP(seuratobj, dims=1:20)
 seuratobj = RunUMAP(seuratobj, dims=1:10, reduction='protpca', reduction.name='protumap')
 seuratobj = RunUMAP(seuratobj, dims=1:10, reduction='protnormpca', reduction.name='protnormumap')
 
-p1 = DimPlot(seuratobj, reduction='umap', group.by='day', shuffle = T)
+p1 = DimPlot(seuratobj, reduction='umap', group.by='daydonor', shuffle = T)
 p2 = DimPlot(seuratobj, reduction='umap', group.by='cell_type', shuffle=T)
-p3 = DimPlot(seuratobj, reduction='protumap', group.by='day', shuffle=T)
+p3 = DimPlot(seuratobj, reduction='protumap', group.by='daydonor', shuffle=T)
 p4 = DimPlot(seuratobj, reduction='protumap', group.by='cell_type', shuffle=T)
-p5 = DimPlot(seuratobj, reduction='protnormumap', group.by='day', shuffle=T)
+p5 = DimPlot(seuratobj, reduction='protnormumap', group.by='daydonor', shuffle=T)
 p6 = DimPlot(seuratobj, reduction='protnormumap', group.by='cell_type', shuffle=T)
 library(patchwork)
 p1 + p2 # RNA
@@ -122,7 +123,7 @@ seuratobj = FindMultiModalNeighbors(
 )
 seuratobj <- RunUMAP(seuratobj, nn.name = "weighted.nn", reduction.name = "wnn.umap")
 p7 = DimPlot(seuratobj, reduction='wnn.umap', group.by='cell_type', shuffle=T)
-p8 = DimPlot(seuratobj, reduction='wnn.umap', group.by='day', shuffle=T)
+p8 = DimPlot(seuratobj, reduction='wnn.umap', group.by='daydonor', shuffle=T)
 p7+p8
 
 # RNA & dsb-normalized protein
@@ -136,25 +137,25 @@ seuratobj <- RunUMAP(seuratobj, nn.name = "weighted.nn.dsb", reduction.name = "w
 p9 = DimPlot(seuratobj, reduction='wnn.dsb.umap', group.by='cell_type', shuffle=T) +
   labs(x='UMAP1', y='UMAP2', title='Cell type') +
   theme(text=element_text(size=22))
-p10 = DimPlot(seuratobj, reduction='wnn.dsb.umap', group.by='day', shuffle=T) +
-  labs(x='UMAP1', y='UMAP2', title='Day') +
+p10 = DimPlot(seuratobj, reduction='wnn.dsb.umap', group.by='daydonor', shuffle=T) +
+  labs(x='UMAP1', y='UMAP2', title='Day/Donor') +
   theme(text=element_text(size=22))
 p9 + p10
 
-p11 = DimPlot(seuratobj, reduction='wnn.dsb.umap', group.by='donor', shuffle=T) +
-  labs(x='UMAP1', y='UMAP2', title='Donor') +
-  theme(text=element_text(size=18))
-p11
+saveRDS(p9, '/home/asmauger/biostat625final/cell_type_umap.rds')
+saveRDS(p10, '/home/asmauger/biostat625final/daydonor_umap.rds')
 
 # Other summaries
 
 library(dplyr)
+# get counts of cells by day, donor, and cell type
 summary1 = metadata %>% filter(cell_id %in% colnames(seuratobj)) %>% select(day, donor, cell_type) %>% group_by(day, donor) %>% summarise(n())
 summary2 = metadata %>% filter(cell_id %in% colnames(seuratobj)) %>% select(day, donor, cell_type) %>% group_by(cell_type) %>% summarise(n())
 sum(summary1$`n()`)
 
 library(ggplot2)
 library(forcats)
+# get proportions of cells belonging to cell type per day per donor
 summary3 = metadata %>%
   filter(cell_id %in% colnames(seuratobj)) %>%
   select(day, donor, cell_type) %>%
@@ -163,9 +164,13 @@ summary3 = metadata %>%
   count() %>%
   mutate(proportion = n/`n()`)
 summary3$cell_type = as.factor(summary3$cell_type)
+# find average proportion of cells belonging to cell type (average over donors)
+summary4 = summary3 %>% group_by(day, cell_type) %>% mutate(mean = mean(proportion), sd = sd(proportion)) %>% distinct(sd, .keep_all=T)
 
-ggplot(summary3, aes(y=proportion, x=factor(day), fill=fct_reorder(summary3$cell_type, summary3$proportion, mean, .desc=T))) +
-  geom_bar(stat='summary', fun='mean', position='dodge') +
+cell_proportions <- ggplot(summary4, aes(y=mean, x=factor(day), fill=fct_reorder(summary4$cell_type, summary4$mean, .desc=T))) +
+  geom_bar(stat='identity', position='dodge') +
+  geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=1,
+                position=position_dodge(.9)) +
   labs(fill='cell type', x='day', y='average proportion of cells assigned to cell type') +
   theme_classic() +
   theme(text=element_text(size=14)) +
@@ -176,3 +181,4 @@ ggplot(summary3, aes(y=proportion, x=factor(day), fill=fct_reorder(summary3$cell
                       'MkP' = 'Megakaryocyte Progenitor',
                       'MoP' = 'Monocyte Progenitor',
                       'BP' = 'B-Cell Progenitor'))
+saveRDS(cell_proportions, '/home/asmauger/biostat625final/cell_proportions.rds')

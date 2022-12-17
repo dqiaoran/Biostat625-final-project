@@ -142,10 +142,14 @@ seuratobj2 <- ScaleData(seuratobj2, split.by='daydonor')
 seuratobj3 <- ScaleData(seuratobj3, split.by='daydonor')
 seuratobj4 <- ScaleData(seuratobj4, split.by='daydonor')
 
+# convert to single cell experiment
+
 sce <- as.SingleCellExperiment(seuratobj)
 sce2 <- as.SingleCellExperiment(seuratobj2)
 sce3 <- as.SingleCellExperiment(seuratobj3)
 sce4 <- as.SingleCellExperiment(seuratobj4)
+
+# convert to anndata
 
 zellkonverter::writeH5AD(sce, file='/home/asmauger/biostat625final/rna_train_hvg_scaled.h5ad', X_name='scaledata')
 zellkonverter::writeH5AD(sce2, file='/home/asmauger/biostat625final/rna_test_hvg_scaled.h5ad', X_name = 'scaledata')

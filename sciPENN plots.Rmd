@@ -70,34 +70,40 @@ scaled_true <- assay(protein_predictions, 'logcounts')
 # extract predictions
 predicted <- assay(protein_predictions, 'imputed')
 # extract unscaled 'true' protein
-scaled_true <- assay(protein_predictions, 'counts')
+true <- assay(protein_predictions, 'counts')
 
-# extra scaling (force between 0 and 1)
+# min-max normalization (force between 0 and 1)
 predicted2 <- apply(predicted, 1, function(x) (x-min(x))/(max(x)-min(x)))
 predicted2 <- t(predicted2)
 scaled2 <- apply(scaled_true, 1, function(x) (x-min(x))/(max(x)-min(x)))
 scaled2 <- t(scaled2)
 
 # add to seurat
-seuratobj2[['counts']] <- CreateAssayObject(counts = scaled_true)
+seuratobj2[['counts']] <- CreateAssayObject(counts = true)
 seuratobj2[['scaledcounts']] <- CreateAssayObject(counts = scaled_true)
 seuratobj2[['predicted']] <- CreateAssayObject(counts = predicted)
 seuratobj2[['scaled2']] <- CreateAssayObject(counts = scaled2)
 seuratobj2[['predicted2']] <- CreateAssayObject(counts = predicted2)
 
 # do PCA and UMAP
-VariableFeatures(seuratobj2, assay='counts') <- rownames(seuratobj2[['counts']])
+VariableFeatures(seuratobj2, assay='counts') <- rownames(seuratobj2[['counts']]) # take all proteins
 seuratobj2 <- ScaleData(seuratobj2, assay='counts')
 seuratobj2 <- RunPCA(seuratobj2, assay='counts')
 ElbowPlot(seuratobj2)
 seuratobj2 <- RunUMAP(seuratobj2, dims = 1:20)
-DimPlot(seuratobj2, reduction = "umap", group.by='cell_type', shuffle = T)
+cell_typeplot <- DimPlot(seuratobj2, reduction = "umap", group.by='cell_type', shuffle = T)
 
 DefaultAssay(seuratobj2) <- 'predicted2'
-predictedplots <- FeaturePlot(seuratobj2, features = c("CD8", "CD71", 'CD62L', 'CD328'), keep.scale='feature')
+predictedplots <- FeaturePlot(seuratobj2, features = c('CD328', "CD8", "CD71", 'CD62L'), keep.scale='feature')
 
 DefaultAssay(seuratobj2) <- 'scaled2'
-trueplots <- FeaturePlot(seuratobj2, features = c("CD8", "CD71", 'CD62L', 'CD328'))
+trueplots <- FeaturePlot(seuratobj2, features = c('CD328', "CD8", "CD71", 'CD62L'))
 
+cell_typeplot
+predictedplots
+trueplots
 
+saveRDS(cell_typeplot, '/home/asmauger/biostat625final/protein_celltype_umap.rds')
+saveRDS(predictedplots, '/home/asmauger/biostat625final/protein_predicted_umap.rds')
+saveRDS(predictedplots, '/home/asmauger/biostat625final/protein_true_umap.rds')
 ```
