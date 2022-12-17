@@ -21,7 +21,8 @@ library(patchwork)
 
 ## Exploratory Analysis
 
-[](/home/asmauger/biostat625final/overall_umap.png) 
+![](overall_umap.png)
+
 
 
 
