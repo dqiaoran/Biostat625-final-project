@@ -167,7 +167,7 @@ summary3$cell_type = as.factor(summary3$cell_type)
 # find average proportion of cells belonging to cell type (average over donors)
 summary4 = summary3 %>% group_by(day, cell_type) %>% mutate(mean = mean(proportion), sd = sd(proportion)) %>% distinct(sd, .keep_all=T)
 
-cell_proportions <- ggplot(summary4, aes(y=mean, x=factor(day), fill=fct_reorder(summary4$cell_type, summary4$mean, .desc=T))) +
+cell_proportions <- ggplot(summary4, aes(y=mean, x=factor(day), fill=fct_reorder(cell_type, mean, .desc=T))) +
   geom_bar(stat='identity', position='dodge') +
   geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=1,
                 position=position_dodge(.9)) +

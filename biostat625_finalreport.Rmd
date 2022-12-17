@@ -21,9 +21,14 @@ library(patchwork)
 
 ## Exploratory Analysis
 
+![](exploratory.png)
+
+## sciPENN
+
 ![](overall_umap.png)
 
 
+![](expression_umap.png)
 
 
 

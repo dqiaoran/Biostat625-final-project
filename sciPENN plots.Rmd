@@ -105,5 +105,5 @@ trueplots
 
 saveRDS(cell_typeplot, '/home/asmauger/biostat625final/protein_celltype_umap.rds')
 saveRDS(predictedplots, '/home/asmauger/biostat625final/protein_predicted_umap.rds')
-saveRDS(predictedplots, '/home/asmauger/biostat625final/protein_true_umap.rds')
+saveRDS(trueplots, '/home/asmauger/biostat625final/protein_true_umap.rds')
 ```
