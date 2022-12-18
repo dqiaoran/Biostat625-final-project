@@ -51,7 +51,7 @@ p1
 p2
 ```
 ```{r}
-graph<-p1+p2
+graph<-p2+p1
 
 graph + plot_annotation(
   title = 'Expression of CD71'
