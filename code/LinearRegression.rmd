@@ -1,0 +1,80 @@
+---
+title: "LinearRegression"
+author: "Aditya"
+date: '2022-12-18'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(zellkonverter)
+library(SingleCellExperiment)
+library(readxl)
+library(MASS)
+
+```
+
+```{r}
+
+#Read data for Linear Regression
+adata_gene_train = zellkonverter::readH5AD("/home/asmauger/biostat625final/rna_train_hvg_scaled.h5ad")
+adata_gene_test = zellkonverter::readH5AD("/home/asmauger/biostat625final/rna_test_hvg_scaled.h5ad")
+adata_protein_train = zellkonverter::readH5AD("/home/asmauger/biostat625final/prot_train_scaled.h5ad")
+adata_protein_test = zellkonverter::readH5AD("/home/asmauger/biostat625final/prot_test_scaled.h5ad")
+
+#Read meta data
+meta_data <- cbind("Celltype"=adata_gene_train$cell_type,"Day"=adata_gene_train$day,"Donor"=adata_gene_train$donor)
+
+#Convert train and test data to dataframes
+gene_train <- assay(adata_gene_train)
+gene_train <- data.frame(t(gene_train))
+
+train_gene <- cbind(gene_train,meta_data)
+
+gene_test <- assay(adata_gene_test)
+gene_test <- data.frame(t(gene_test))
+
+test_gene <- cbind(gene_test,meta_data_test)
+
+meta_data_test <- cbind("Celltype"=adata_gene_test$cell_type,"Day"=adata_gene_test$day,"Donor"=adata_gene_test$donor)
+
+
+protein_train = assay(adata_protein_train)
+protein_train <-data.frame(t(protein_train))
+
+protein_test = assay(adata_protein_test)
+protein_test <-data.frame(t(protein_test))
+
+
+#Running linear regression for each protein and predicted values stored
+#Proteins are divided into 3 and run on 3 separate cores
+results <- matrix(nrow = 35492, ncol = 45)
+for (i in 1:45) {
+  start_time <- Sys.time()
+  df <- cbind("Protein"=protein_train[,i],train_gene)
+  lr <- lm(Protein~.,data=df)
+  results[,i]<-predict(lr, test_gene)
+  end_time <- Sys.time()
+  print(i)
+  print(end_time-start_time)
+  
+}
+
+write.csv(a,file="/home/asmauger/biostat625final/P_Aditya.csv")
+```
+
+```{r}
+
+#Divided Protein predicted values are combined
+b <- read.csv("/home/asmauger/biostat625final/P_Aditya.csv")
+c <- read.csv("/home/asmauger/biostat625final/LR_91_134.csv")
+d <-read.csv("/home/asmauger/biostat625final/prd46_90.csv")
+
+lr_data <- cbind(D1=b,D2=c,D3=d)
+lr_data<-dplyr::select(lr_data, -c("D1.X","D2.X","D3.X"))
+
+
+write.csv(lr_data,file="/home/asmauger/biostat625final/LR_Predicted_Protein.csv")
+write.csv(protein_test,file="/home/asmauger/biostat625final/LR_True_Protein.csv")
+```
+
