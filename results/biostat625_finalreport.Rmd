@@ -1,10 +1,11 @@
 ---
 title: "Cell Surface Protein Expression Prediction Based On Single Cell RNA-seq Data"
+author: Abigail Mauger, Aditya Jalin, Qiaoran Dong
 output:
   pdf_document: default
   html_document:
     df_print: paged
-date: '2022-12-17'
+date: 'https://github.com/dqiaoran/Biostat625-final-project.git'
 ---
 
 ```{r setup, include=FALSE}
@@ -30,11 +31,11 @@ There are various data analysis methods for protein expression imputation using 
 
 ## Methods
 
-### *Data types*
+#### *Data types*
 
 We primarily stored data either as a sparse matrix (.rds) or as hd5 / h5ad files on the Biostatistics cluster. While working with the data, we used Seurat, SingleCellExperiment, or Anndata object types to parse and process the data in both R and Python. For use in Spark, the dataset was transformed into a pyspark object.
 
-### *Data processing*
+#### *Data processing*
 
 The CITE-seq dataset we used was pre-filtered for low-quality cells, so we did not do any quality control ourselves, except for removing six non-human proteins (isotype controls). We then stratified the cells based on donor and day of collection into nine groups. Each group was randomly split in half to make a training dataset and testing dataset.
 
@@ -42,53 +43,79 @@ Although sciPENN runs normalization itself, we ran into an error that we could n
 
 After normalization, we used Seurat to select 1,000 genes with highly variable expression across cells, and then pruned our dataset down to these genes. We used zellkonverter to save these data as anndata files for use with Python.
 
-### *Exploratory analysis*
+#### *Exploratory analysis*
 
-For exploratory analysis, we used the default Seurat normalization and dsb-normalized protein abundance, slightly different from the normalization we used for prediction with sciPENN and linear regression. We then used the default Seurat pipeline to visualize the entire dataset using a weighted nearest neighbor UMAP. We also generated basic summary statistics using dplyr.
+For exploratory analysis, we used the default Seurat normalization and dsb-normalized protein abundance, slightly different from the normalization we used for prediction with *sciPENN* and linear regression. We then used the default Seurat pipeline to visualize the entire dataset using a weighted nearest neighbor UMAP. We also generated basic summary statistics using *dplyr*.
 
-### *sciPENN implementation*
+#### *sciPENN implementation*
 
-To implement sciPENN, we first had to set up a conda environment using miniconda, as we could not install Python libraries directly on the Biostatistics cluster. The randomly split training set is fed into the sciPENN framework to train the protein prediction model with the batch key as a combination of day and donor. sciPENN scales the data to unit variance and zero mean by batch key during training.
+To implement *sciPENN*, we first had to set up a *conda* environment using *miniconda*, as we could not install Python libraries directly on the Biostatistics cluster. The randomly split training set is fed into the *sciPENN* framework to train the protein prediction model with the batch key as a combination of day and donor. *sciPENN* scales the data to unit variance and zero mean by batch key during training.
 
-### *Linear regression*
+#### *Linear regression*
 
-We fit 134 independent linear regression models for each of the proteins with the gene expression for 1,000 highly variable genes as well as day, donor and cell type as covariates. To ensure our results would be comparable to the sciPENN results, we also scaled the data to unit variance and zero mean using Seurat in R.
+We fit 134 independent linear regression models for each of the proteins with the gene expression for 1,000 highly variable genes as well as day, donor and cell type as covariates. To ensure our results would be comparable to the *sciPENN* results, we also scaled the data to unit variance and zero mean using Seurat in R.
 
-### *Evaluation*
+#### *Evaluation*
 
-The performances of the sciPENN and Linear regression model were compared using RMSE and pearson correlations (predicted vs true value). For plotting, the data were min-max normalized to ease interpretation of expression levels.
+The performances of the *sciPENN* and Linear regression model were compared using RMSE and pearson correlations (predicted vs true value). For plotting, the data were min-max normalized to ease interpretation of expression levels.
 
 ## Results
 
+![Reduced-dimension representation of the integrated RNA and Protein expression data (left), and average cell proportions with respect to days (right).](exploratory.png){alt="Reduced-dimension representation of the integrated RNA and Protein expression data (*left*), and average cell proportions with respect to days (*right*)." width="574"}
+
 ### *Exploratory Analysis*
 
-The CITE-seq dataset has seven cell-type annotations. The UMAP in Figure 1 is a reduced-dimension representation of both the RNA and protein expression data integrated using a weighted nearest neighbor analysis. Though the different cell types do not form completely distinct clusters, there are distinct regions. Hematopoietic stem cells (HSC) are the most abundant, while monocyte and B-cell progenitors are the least abundant. Over time, the proportion of HSC decreases and the proportions of other cell types increase, suggesting differentiation is occurring.
+The CITE-seq dataset has seven cell-type annotations. The UMAP in *Figure 1* is a reduced-dimension representation of both the RNA and protein expression data integrated using a weighted nearest neighbor analysis. Though the different cell types do not form completely distinct clusters, there are grouping patterns. *Hematopoietic stem cells (HSC)* are the most abundant, while *monocyte* and *B-cell progenitors* are the least abundant. Over time, the proportion of HSC decreases and the proportions of other cell types increase, suggesting that differentiation is occurring.
 
-![](exploratory.png)
+![sciPENN embedding UMAP illustrates the integration of testing data and training data](overall_umap.png){alt="sciPENN embedding UMAP" width="345"}
+
+![UMAP of predicted protein expressions (left) and UMAP of true protein expressions (right)](expression_umap.png){alt="UMAP of predicted protein expressions of (left) and UMAP of true protein expressions" width="574"}
+
+![Violin graphs of CD71 expression with respect to cell types: predicted (left) vs true (right)](violin_graph.png){width="571"}
 
 ### *Protein prediction with sciPENN*
 
-During model training, sciPENN creates a low dimensional embedding. We visualized this embedding using a UMAP (Figure 2). The points from the training set and testing set are randomly distributed, showing that sciPENN was able to integrate the two datasets effectively.
+During model training, *sciPENN* creates a low dimensional embedding. We visualized this embedding using a UMAP (Figure 2). The points from the training set and testing set are randomly distributed, showing that *sciPENN* was able to integrate the two datasets effectively.
 
 We also used UMAPs to visually compare predicted protein expression and true protein expression in the testing dataset (Figure 3). CD328 had the lowest average expression, CD8 had the lowest correlation between predicted and true, CD71 had the highest average expression, and CD62L had the highest correlation. The low correlation for CD8 is likely due to the random pattern of expression and generally low expression resulting in minimal predictive power.
 
 Next, we examined how the predicted expression and true expression of CD71, the most highly expressed protein, varied between cell types and days (Figure 4). In general, the predicted expression seems to be consistent with the true expression, though unsurprisingly the ranges of predicted values are smaller. CD71 seems to have fairly consistent expression over time, maybe decreasing slightly. The expression in erythrocytes is higher than any of the other cell types.
 
-![](overall_umap.png){width="400"}
+### *Comparing predictions using sciPENN and linear regression*
 
-![](expression_umap.png)
+To compare the protein expression prediction accuracy between sciPENN and linear regression, we looked at the Pearson correlation and RMSE of the two models. Figure 5 shows that sciPENN has the higher prediction accuracy quantified by a lower RMSE and a higher correlation coefficient on average. Furthermore, the variance of the both the RMSE and correlation is lower in sciPENN, indicating more consistency in predictions across different proteins.
+
+![Model comparison between linear regression(red) versus sciPENN(green): boxplots of RMSE (left) and Pearson correlation (right)](boxplots.png){width="647"}
 
 ## Discussion/Conclusions
 
-Models trained using CITE-seq data to predict protein expression could potentially be used to extract additional useful information from RNA-seq data, as both RNA expression and protein abundance are relevant to describing cellular states. However, its usefulness is limited to proteins that can be measured with CITE-seq. It may be possible to impute proteins not measured in CITE-seq, but careful consideration would need to be given to how different classes of protein may vary in transcriptional and post-transcriptional regulation. That is, it is likely that the relationship between RNA expression and surface protein abundance is distinct from the relationship between RNA expression and intracellular protein abundance.
+#### *Limitations of the model*
 
-We also noticed that sciPENN uses a relatively simple normalization scheme, and we wonder whether the predictions could be improved with regression-based normalization techniques like scTransform (reference).
+Models trained using CITE-seq data to predict protein expression could potentially be used to extract additional useful information from RNA-seq data, as both RNA expression and protein abundance are relevant to describing cellular states. However, its usefulness is limited to proteins that can be measured with CITE-seq. It may be possible to impute proteins not measured in CITE-seq, but careful consideration is needed as different classes of protein may vary in transcriptional and post-transcriptional regulation. In other words, it is likely that the relationship between RNA expression and surface protein abundance is distinct from the relationship between RNA expression and intracellular protein abundance.
 
-We ran into multiple computational challenges during this project. sciPENN was more difficult to implement than we anticipated, requiring a python-specific data type and a conda environment. Even after we got it working, the API failed to run on their test data, perhaps because of version issues with the cluster. So, we had to go back to the source code and implement a copy of the sciPENN normalization in R. For linear regression, we wanted to use Spark. However, even after successfully creating a pyspark object, we ran into issues with memory and had to use base R, though it took around 30 seconds per model.
+#### *Normalization scheme*
 
-In conclusion, sciPENN works reasonably well (the RMSE from our analysis were on par with or better than the RMSE presented in the sciPENN paper)
+We also noticed that sciPENN uses a relatively simple normalization scheme, and we wonder whether the predictions could be improved with regression-based normalization techniques like scTransform.
+
+#### *sciPENN*
+
+We ran into multiple computational challenges during this project. sciPENN was more difficult to implement than we anticipated, requiring a python-specific data type and a conda environment. Even after we got it working, the API failed to run on their test data, perhaps because of version issues with the cluster. So, we had to go back to the source code and implement a copy of the sciPENN normalization in R.
+
+#### *Spark*
+
+For linear regression, our initial intention was to use spark since we had to run 134 models. There were several unresolved issues when we were trying to run linear regression using Spark. We set the environment for pyspark in python and successfully loaded the data as spark data frame. However, multiple out of memory exceptions were thrown when the linear regression method was running. This is due to excess heap memory usage in the JVM. Hence we used base R, parallelizing the process by splitting the protein matrix into 3 and processing the chucks across 3 different computer. 
+
+#### Conclusion
+
+In conclusion, sciPENN works well as a machine learning program to predict cell surface protein abundance. It incorporates pre-processing steps like QC filtering, normalization, and selection of highly variable genes before model training into a single pipeline and runs efficiently. It was able to predict protein expression reasonably well in our CITE-seq data in spite of the data being collected across multiple days and donors, with a mean RMSE of 0.84. The RMSE and correlations from our analysis were on par with or better than those presented in the sciPENN paper (3). In the future, sciPENN or a similar method could be extended to impute unmeasured proteins, to predict future protein abundance, to investigate protein expression across cell types, or to improve the integration of multiple datasets. 
 
 ## Contributions
+
+Aditya Jalin: Setting up the sciPENN environment in the cluster, Implementation of linear regression, Generation and comparison of evaluation metrics.
+
+Qiaoran Dong: pyspark environment set up and implementation.
+
+Abigail Mauger: exploratory data analysis; normalization; saving and organizing data files; plotting (exploratory data analysis & UMAPs)
 
 ## References
 
