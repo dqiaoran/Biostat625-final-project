@@ -1,0 +1,86 @@
+---
+title: "Fig4_Fig5_plot"
+author: "Aditya"
+date: '2022-12-18'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(zellkonverter)
+library(SingleCellExperiment)
+library(readxl)
+library(MASS)
+library(patchwork)
+```
+
+```{r}
+
+#Read sciPENN trained h5 file
+protein_predictions <- zellkonverter::readH5AD('/home/asmauger/biostat625final/protein_test_final.h5ad')
+
+#Read sciPENN evaluation metrics
+metrics<-read.csv('/home/asmauger/biostat625final/metrics.csv')
+
+
+#Convert to SingleCellExperiment object
+proteins<-assays(protein_predictions)
+
+#Get true and predicted protein values
+p_counts<- proteins$logcounts
+p_impts<- proteins$imputed
+
+#Find protein with highest average expression
+p_idx <- which(metrics$AVG==max(metrics$AVG))
+p_exp <- p_counts[p_idx,]
+p_pred <- p_impts[p_idx,]
+
+#Min-Max normalisation
+p_exp<-(p_exp-min(p_exp))/(max(p_exp)-min(p_exp))
+p_pred<-(p_pred-min(p_pred))/(max(p_pred)-min(p_pred))
+
+#Plot Average protein expression
+plot_df <- data.frame("Average true Expression"=p_exp,"Average predicted Expression" = p_pred,"Day"=as.factor(protein_predictions$day),"Cell type" = protein_predictions$cell_type,check.names = F)
+
+p1 <- ggplot(plot_df, aes(x=`Cell type`, y=`Average true Expression`, fill=`Day`)) + 
+  geom_violin()
+p2 <- ggplot(plot_df, aes(x=`Cell type`, y=`Average predicted Expression`, fill=`Day`)) + 
+  geom_violin()
+
+p1
+p2
+```
+```{r}
+graph<-p1+p2
+
+graph + plot_annotation(
+  title = 'Expression of CD71'
+)
+```
+
+
+```{r}
+#Read Linear regression evaluation metrics
+metrics_lr<-read.csv('/home/asmauger/biostat625final/metrics_lr.csv')
+
+metrics_sp<-metrics[,1:3]
+
+#COmbine both metrics
+metrics_lr$Condition <- "LR"
+metrics_sp$Condition <- "sciPENN"
+
+final_metrics <- rbind(metrics_lr, metrics_sp)
+
+#Plot boxplot of metrics
+p_rmse <- ggplot(final_metrics, aes(x=Condition, y=RMSE,color = Condition)) + 
+  geom_boxplot()
+
+p_corr <- ggplot(final_metrics, aes(x=Condition, y=Correlation, color = Condition)) + 
+  geom_boxplot()
+
+graph_metric <-p_rmse+p_corr
+graph_metric + plot_annotation(
+  title = 'Comparison of evaluation metrics'
+)
+```
+
